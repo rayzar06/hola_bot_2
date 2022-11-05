@@ -64,8 +64,7 @@ def pose_estimation(corners):
     pose.x = corners[0][0][0][0] + (corners[0][0][1][0] - corners[0][0][0][0])/2
     pose.y = corners[0][0][0][1] + (corners[0][0][2][1] - corners[0][0][0][1])/2
     pose.theta = math.atan2(corners[0][0][1][1] - corners[0][0][0][1], corners[0][0][1][0] - corners[0][0][0][0])
-    pose.x = pose.x - 249.5
-    pose.y = 249.5 - pose.y
+    pose.y = 500 -pose.y
     aruco_publisher.publish(pose)
     print(pose.x, pose.y, pose.theta)
     
