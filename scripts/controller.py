@@ -46,9 +46,9 @@ from tf.transformations import euler_from_quaternion	# Convert angles
 
 PI = 22/7
 
-x_goals = [50]
-y_goals = [350]
-theta_goals = [0]
+x_goals = []
+y_goals = []
+theta_goals = []
 
 right_wheel_pub = None
 left_wheel_pub = None
@@ -68,6 +68,7 @@ def signal_handler(sig, frame):
 
 def cleanup():
     global right_wheel_pub, left_wheel_pub, front_wheel_pub
+    #inverse_kinematics(249.5,249.5,0)
     rospy.signal_shutdown("Test cases completed")
     pass
 
@@ -94,6 +95,7 @@ def aruco_feedback_Cb(msg):
     hola_theta = msg.theta
 
 
+
 def linear_vel_x(x_d, y_d, const):
     global hola_x,hola_x,hola_theta
     return const*math.cos(math.atan2(y_d-hola_y,x_d-hola_x)-hola_theta)
@@ -106,7 +108,7 @@ def linear_vel_y(x_d, y_d, const):
 
 def inverse_kinematics(x_d,y_d,theta_d):
     global hola_x,hola_y,hola_theta
-    rate = rospy.Rate(500)
+    rate = rospy.Rate(1000)
     right_wheel_pub = rospy.Publisher('/right_wheel_force', Wrench, queue_size=10)
     front_wheel_pub = rospy.Publisher('/front_wheel_force', Wrench, queue_size=10)
     left_wheel_pub = rospy.Publisher('/left_wheel_force', Wrench, queue_size=10)
@@ -114,8 +116,8 @@ def inverse_kinematics(x_d,y_d,theta_d):
     while not rospy.is_shutdown():
 
         const_matrix2 = np.array([[-0.17483,1,0],[-0.17483,-math.cos(PI/3),-math.sin(PI/3)],[-0.17483,-math.cos(PI/3),math.sin(PI/3)]])
-        vel_matrix = np.array([theta_d,linear_vel_x(x_d, y_d, 1),linear_vel_y(x_d, y_d, 1)])
-        ang_vel_matrix = np.matmul(const_matrix2,vel_matrix)
+        vel_matrix = np.array([0,linear_vel_x(x_d, y_d, 1),linear_vel_y(x_d, y_d, 1)])
+        
 
         del_x = x_d - hola_x
         del_y = y_d - hola_y
@@ -123,6 +125,8 @@ def inverse_kinematics(x_d,y_d,theta_d):
         vel_front = Wrench()
         vel_left = Wrench()
         vel_right = Wrench()
+
+        ang_vel_matrix = np.matmul(const_matrix2,vel_matrix)
 
         front = ang_vel_matrix[0]
         right = ang_vel_matrix[1]
@@ -136,17 +140,37 @@ def inverse_kinematics(x_d,y_d,theta_d):
         left_wheel_pub.publish(vel_left)
         right_wheel_pub.publish(vel_right)
         if abs(del_x) < 3 and abs(del_y) < 3:
+            if del_theta <= 0:
+                ang_const = -100
+            else:
+                ang_const = 100
+
+            while abs(del_theta) > 0.04 :
+                del_theta = theta_d - hola_theta
+                print(del_theta)
+                ang_vel_matrix = np.matmul(const_matrix2,[ang_const,0,0])
+                vel_front.force.x = ang_vel_matrix[0]
+                vel_front.force.y = 0
+                vel_right.force.x = ang_vel_matrix[1]
+                vel_right.force.y = 0
+                vel_left.force.x = ang_vel_matrix[2]
+                vel_left.force.y = 0
+
+                front_wheel_pub.publish(vel_front)
+                right_wheel_pub.publish(vel_right)
+                left_wheel_pub.publish(vel_left)
+                rate.sleep()
+
             vel_front.force.x = 0
             vel_front.force.y = 0
-
+            vel_right.force.x = 0
+            vel_right.force.y = 0
             vel_left.force.x = 0
             vel_left.force.y = 0
 
-            vel_right.force.x = 0
-            vel_right.force.y = 0
             front_wheel_pub.publish(vel_front)
-            left_wheel_pub.publish(vel_left)
             right_wheel_pub.publish(vel_right)
+            left_wheel_pub.publish(vel_left)
             break
         rate.sleep()
 
@@ -159,7 +183,7 @@ def main():
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    rate = rospy.Rate(200)
+    rate = rospy.Rate(1000)
     rospy.Subscriber('detected_aruco',Pose2D,aruco_feedback_Cb)
     rospy.Subscriber('task2_goals',PoseArray,task2_goals_Cb)
 
@@ -169,12 +193,12 @@ def main():
                 y_d  = 500 - y_d
                 print("x_d = ",x_d,"y_d = ",y_d,"theta_d = ",theta_d)
                 inverse_kinematics(x_d,y_d,theta_d)
-                sleep(2)
-            '''
+                sleep(3)
+            
             x_goals.clear()
             y_goals.clear()
-            theta_goals.clear()]'''
-        rate.sleep()
+            theta_goals.clear()
+            
 
     rospy.signal_shutdown("Test cases completed")       
 

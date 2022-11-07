@@ -38,7 +38,7 @@ from geometry_msgs.msg import Pose2D
 # Required to publish ARUCO's detected position & orientation 
 ############################ GLOBALS #############################
 
-aruco_publisher = rospy.Publisher('detected_aruco', Pose2D)
+aruco_publisher = rospy.Publisher('detected_aruco', Pose2D,queue_size=20)
 aruco_msg = Pose2D()
 pose = Pose2D()
 ##################### FUNCTION DEFINITIONS #######################
@@ -63,7 +63,7 @@ def pose_estimation(corners):
     global pose
     pose.x = corners[0][0][0][0] + (corners[0][0][1][0] - corners[0][0][0][0])/2
     pose.y = corners[0][0][0][1] + (corners[0][0][2][1] - corners[0][0][0][1])/2
-    pose.theta = math.atan2(corners[0][0][1][1] - corners[0][0][0][1], corners[0][0][1][0] - corners[0][0][0][0])
+    pose.theta = math.atan2(-corners[0][0][1][1] + corners[0][0][0][1] , corners[0][0][1][0] - corners[0][0][0][0])
     pose.y = 500 -pose.y
     aruco_publisher.publish(pose)
     print(pose.x, pose.y, pose.theta)
