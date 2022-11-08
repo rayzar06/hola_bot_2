@@ -38,7 +38,7 @@ from geometry_msgs.msg import Pose2D
 # Required to publish ARUCO's detected position & orientation 
 ############################ GLOBALS #############################
 
-aruco_publisher = rospy.Publisher('detected_aruco', Pose2D,queue_size=20)
+aruco_publisher = rospy.Publisher('detected_aruco', Pose2D,queue_size=40)
 aruco_msg = Pose2D()
 pose = Pose2D()
 ##################### FUNCTION DEFINITIONS #######################
@@ -61,10 +61,10 @@ def findArucoMarkers(img, markerSize = 4, totalMarkers=250, draw=True):
 
 def pose_estimation(corners):
     global pose
-    pose.x = corners[0][0][0][0] + (corners[0][0][1][0] - corners[0][0][0][0])/2
-    pose.y = corners[0][0][0][1] + (corners[0][0][2][1] - corners[0][0][0][1])/2
+    pose.x = int(corners[0][0][0][0] + (corners[0][0][1][0] - corners[0][0][0][0])/2)
+    pose.y = int(corners[0][0][0][1] + (corners[0][0][2][1] - corners[0][0][0][1])/2)
     pose.theta = math.atan2(-corners[0][0][1][1] + corners[0][0][0][1] , corners[0][0][1][0] - corners[0][0][0][0])
-    pose.y = 500 -pose.y
+    pose.y = 499 -pose.y
     aruco_publisher.publish(pose)
     print(pose.x, pose.y, pose.theta)
     
@@ -81,7 +81,7 @@ def callback(data):
       
 def main():
     rospy.init_node('aruco_feedback_node')  
-    rospy.Subscriber('overhead_cam/image_raw', Image, callback)
+    rospy.Subscriber('overhead_cam/image_raw', Image, callback,queue_size=20)
     rospy.spin()
   
 if __name__ == '__main__':

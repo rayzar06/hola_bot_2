@@ -18,7 +18,7 @@
 '''
 
 # Team ID:		1634
-# Author List:		[ Names of team members worked on this file separated by Comma: Name1, Name2, ... ]
+# Author List:		Sriram M
 # Filename:		feedback.py
 # Functions:
 #			[ Comma separated list of functions in this file ]
@@ -58,6 +58,11 @@ hola_x = 0
 hola_y = 0
 hola_theta = 0
 
+rospy.init_node('controller_node')
+rate = rospy.Rate(1000)
+right_wheel_pub = rospy.Publisher('/right_wheel_force', Wrench, queue_size=10)
+front_wheel_pub = rospy.Publisher('/front_wheel_force', Wrench, queue_size=10)
+left_wheel_pub = rospy.Publisher('/left_wheel_force', Wrench, queue_size=10)
 
 def signal_handler(sig, frame):
       
@@ -68,9 +73,17 @@ def signal_handler(sig, frame):
 
 def cleanup():
     global right_wheel_pub, left_wheel_pub, front_wheel_pub
-    #inverse_kinematics(249.5,249.5,0)
-    rospy.signal_shutdown("Test cases completed")
-    pass
+    front_force = Wrench()
+    right_force = Wrench()
+    left_force = Wrench()
+
+    front_force.force.x = 0
+    right_force.force.x = 0
+    left_force.force.x = 0
+
+    front_wheel_pub.publish(front_force)
+    right_wheel_pub.publish(right_force)
+    left_wheel_pub.publish(left_force)
 
 
 def task2_goals_Cb(msg):
@@ -95,111 +108,78 @@ def aruco_feedback_Cb(msg):
     hola_theta = msg.theta
 
 
+def euclidean_distance(x_d, y_d):
+    global hola_x,hola_y
+    return math.sqrt((x_d-hola_x)**2+(y_d-hola_y)**2)
 
-def linear_vel_x(x_d, y_d, const):
+
+def linear_vel_x(x_d, y_d, const=50):
     global hola_x,hola_x,hola_theta
     return const*math.cos(math.atan2(y_d-hola_y,x_d-hola_x)-hola_theta)
 
 
-def linear_vel_y(x_d, y_d, const):
+def linear_vel_y(x_d, y_d, const=50):
     global hola_x,hola_x,hola_theta
     return const*math.sin(math.atan2(y_d-hola_y,x_d-hola_x)-hola_theta)
 
+def angular_vel(theta_d, constant=80):
+    return constant * (-hola_theta+theta_d)
 
-def inverse_kinematics(x_d,y_d,theta_d):
+
+def inverse_kinematics(v_x, v_y,v_w):
     global hola_x,hola_y,hola_theta
-    rate = rospy.Rate(1000)
-    right_wheel_pub = rospy.Publisher('/right_wheel_force', Wrench, queue_size=10)
-    front_wheel_pub = rospy.Publisher('/front_wheel_force', Wrench, queue_size=10)
-    left_wheel_pub = rospy.Publisher('/left_wheel_force', Wrench, queue_size=10)
+    const_matrix = np.array([[-0.17483,1,0],[-0.17483,-math.cos(PI/3),-math.sin(PI/3)],[-0.17483,-math.cos(PI/3),math.sin(PI/3)]])
+    vel_matrix = np.array([[v_w],[v_x],[v_y]])
+    force = np.matmul(const_matrix,vel_matrix)
+    return force
 
-    while not rospy.is_shutdown():
+def move2goal(x_d,y_d,theta_d):
+    y_d = 500-y_d
+    global hola_x,hola_y,hola_theta
 
-        const_matrix2 = np.array([[-0.17483,1,0],[-0.17483,-math.cos(PI/3),-math.sin(PI/3)],[-0.17483,-math.cos(PI/3),math.sin(PI/3)]])
-        vel_matrix = np.array([0,linear_vel_x(x_d, y_d, 1),linear_vel_y(x_d, y_d, 1)])
-        
+    vel_front = Wrench()
+    vel_left = Wrench()
+    vel_right = Wrench()
 
-        del_x = x_d - hola_x
-        del_y = y_d - hola_y
-        del_theta = theta_d - hola_theta
-        vel_front = Wrench()
-        vel_left = Wrench()
-        vel_right = Wrench()
+    while euclidean_distance(x_d,y_d) > 0.5:
+        const =5*euclidean_distance(x_d, y_d) 
 
-        ang_vel_matrix = np.matmul(const_matrix2,vel_matrix)
-
-        front = ang_vel_matrix[0]
-        right = ang_vel_matrix[1]
-        left = ang_vel_matrix[2]
-        
-        vel_front.force.x =500* front 
-        vel_left.force.x =500* left 
-        vel_right.force.x =500* right 
+        force = inverse_kinematics(linear_vel_x(x_d,y_d,const),linear_vel_y(x_d,y_d,const),angular_vel(theta_d))
+    
+        vel_front.force.x = force[0]
+        vel_right.force.x = force[1]
+        vel_left.force.x = force[2]
 
         front_wheel_pub.publish(vel_front)
-        left_wheel_pub.publish(vel_left)
         right_wheel_pub.publish(vel_right)
-        if abs(del_x) < 3 and abs(del_y) < 3:
-            if del_theta <= 0:
-                ang_const = -100
-            else:
-                ang_const = 100
+        left_wheel_pub.publish(vel_left)
 
-            while abs(del_theta) > 0.04 :
-                del_theta = theta_d - hola_theta
-                print(del_theta)
-                ang_vel_matrix = np.matmul(const_matrix2,[ang_const,0,0])
-                vel_front.force.x = ang_vel_matrix[0]
-                vel_front.force.y = 0
-                vel_right.force.x = ang_vel_matrix[1]
-                vel_right.force.y = 0
-                vel_left.force.x = ang_vel_matrix[2]
-                vel_left.force.y = 0
-
-                front_wheel_pub.publish(vel_front)
-                right_wheel_pub.publish(vel_right)
-                left_wheel_pub.publish(vel_left)
-                rate.sleep()
-
-            vel_front.force.x = 0
-            vel_front.force.y = 0
-            vel_right.force.x = 0
-            vel_right.force.y = 0
-            vel_left.force.x = 0
-            vel_left.force.y = 0
-
-            front_wheel_pub.publish(vel_front)
-            right_wheel_pub.publish(vel_right)
-            left_wheel_pub.publish(vel_left)
-            break
         rate.sleep()
-
+    cleanup()
 
 
 
 def main():
     global x_goals,y_goals,theta_goals,hola_x,hola_y,hola_theta
-    rospy.init_node('controller_node')
+
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    rate = rospy.Rate(1000)
+    rate = rospy.Rate(2000)
     rospy.Subscriber('detected_aruco',Pose2D,aruco_feedback_Cb)
     rospy.Subscriber('task2_goals',PoseArray,task2_goals_Cb)
 
     while not rospy.is_shutdown():
         if x_goals and y_goals and theta_goals:
             for x_d,y_d,theta_d in zip(x_goals,y_goals,theta_goals):
-                y_d  = 500 - y_d
                 print("x_d = ",x_d,"y_d = ",y_d,"theta_d = ",theta_d)
-                inverse_kinematics(x_d,y_d,theta_d)
-                sleep(3)
+                move2goal(x_d,y_d,theta_d)
+                print("Reached")
+                sleep(4)
             
             x_goals.clear()
             y_goals.clear()
             theta_goals.clear()
-            
-
     rospy.signal_shutdown("Test cases completed")       
 
     
