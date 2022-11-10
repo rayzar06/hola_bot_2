@@ -17,12 +17,11 @@
 *****************************************************************************************
 '''
 
-# Team ID:		1634
-# Author List:		Sriram M
-# Filename:		feedback.py
-# Functions:
-#			[ Comma separated list of functions in this file ]
-# Nodes:		Add your publishing and subscribing node
+# Team ID:		  1634
+# Author List:	  Sriram M , Muhammed Shehin , Joel S Thomas , Sarang Tk
+# Filename:		  feedback.py
+# Functions:      findArucoMarkers , pose_estimation , callback , main
+# Nodes:		  aruco_feedback_node
 
 
 ######################## IMPORT MODULES ##########################
@@ -55,8 +54,6 @@ def findArucoMarkers(img, markerSize = 4, totalMarkers=250, draw=True):
     pose_estimation(corners)
     cv2.imshow("frame", img)
     cv2.waitKey(1)
-    
-
 
 
 def pose_estimation(corners):
@@ -64,7 +61,7 @@ def pose_estimation(corners):
     pose.x = int(corners[0][0][0][0] + (corners[0][0][1][0] - corners[0][0][0][0])/2)
     pose.y = int(corners[0][0][0][1] + (corners[0][0][2][1] - corners[0][0][0][1])/2)
     pose.theta = math.atan2(-corners[0][0][1][1] + corners[0][0][0][1] , corners[0][0][1][0] - corners[0][0][0][0])
-    pose.y = 499 -pose.y
+    #pose.y = 499 -pose.y
     aruco_publisher.publish(pose)
     print(pose.x, pose.y, pose.theta)
     
