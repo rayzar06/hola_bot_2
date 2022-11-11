@@ -155,8 +155,21 @@ def move2goal(x_d,y_d,theta_d):
         front_wheel_pub.publish(vel_front)
         right_wheel_pub.publish(vel_right)
         left_wheel_pub.publish(vel_left)
-
+        del_theta = theta_d - hola_theta
         rate.sleep()
+
+    if distance(x_d,y_d) <= 0.1 and del_theta >= 0.1:
+        while del_theta >= 0.1:
+            wheel_vel = inverse_kinematics(0,0,angular_vel(theta_d))
+            vel_front.force.x = wheel_vel[0]
+            vel_right.force.x = wheel_vel[1]
+            vel_left.force.x = wheel_vel[2]
+
+            front_wheel_pub.publish(vel_front)
+            right_wheel_pub.publish(vel_right)
+            left_wheel_pub.publish(vel_left)
+            del_theta = theta_d - hola_theta
+            rate.sleep()
     cleanup()
 
 
